@@ -4,7 +4,6 @@ import { comparePassword, hashPassword } from "../utils/hash.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import passport from "passport";
 import { authentication, generateToken } from "../utils/utils.js";
-// Comenzamos a inicializar nuestro server
 
 const sessionRouter = Router()
 
