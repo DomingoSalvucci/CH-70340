@@ -57,7 +57,7 @@ app.use(passport.session())
 // Configuracion de Express
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static("public"));
+app.use(express.static("src/public"));
 app.use(morgan("dev"));
 
 // Conexion con Mongo
@@ -72,11 +72,11 @@ app.engine("hbs", handlebars.engine({
 app.set("view engine", "hbs")
 app.set("views", path.join(__dirname, "views"))
 
-
 // Rutas
 app.use("/api/users", userRouter)
 app.use("/api/session", sessionRouter)
 app.use("/", viewsRouter)
+// app.use("/index", viewsRouter)
  
 // app.use("/file",(req, res) => {
 //   if (req.session.views){

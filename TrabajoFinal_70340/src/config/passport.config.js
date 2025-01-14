@@ -4,20 +4,24 @@ import githubStrategy from "passport-github2"
 import envs from "./envs.config.js";
 import { userModel } from "../models/user.model.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
-
 import passportJWT from "passport-jwt"
 
 // const localStrategy = local.Strategy
-// const githubStrateg = github.Strategy
-
+// const githubStrategy = github.Strategy
+const ExtractJWT = passportJWT.ExtractJwt
 // Funcion para obtener el Token
-const buscarToken = (req) => {
+// const buscarToken = (req) => {
+const cookieExtractor = (req) => {
+
   let token = null
 
-  if (req.cookies.currentUser) {
-    token = req.cookies.currentUser
+  // if (req.cookies.currentUser) {
+  //   token = req.cookies.currentUser
+  // }
+  if (req && req.cookies) {
+    token = req.cookies.token
   }
-  console.log(token)
+
   return token
 }
 
@@ -25,7 +29,6 @@ const buscarToken = (req) => {
 const initializePassport = () => {
   // ----------------------------------------
   // Estrategia LOCAL
-  // ----------------------------------------
   passport.use("register",
     new localStrategy(
       {
@@ -35,12 +38,15 @@ const initializePassport = () => {
       async (req, username, password, done) => {
         try {
           let { first_name, last_name, age, email } = req.body
-
+          // console.log(first_name, last_name, age, email, "username: "+ username, "password: "+ password);
           if (!first_name) {
-            return done(null, false)
+            return done(null, false, { message: "Debe ingresar Nombre." })
+          }
+          if (!last_name) {
+            return done(null, false, { message: "Debe ingresar Apellido." })
           }
           const userExists = await userModel.findOne({ email })
-          if (userExists) return done(null, false, { message: "Usuario ya existe" })
+          if (userExists) return done(null, false, { message: "Usuario ya existe." })
           const hashedPassword = await hashPassword(password)
           // validaciones pertinentes
           const user = await userModel.create(
@@ -51,7 +57,10 @@ const initializePassport = () => {
               age,
               password: hashedPassword,
             })
-          return done(null, user)
+
+          // Borrar datos sensibles o confidenciales
+          delete user.password
+          return done(null, user, {message: "Usuario creado con Existo"})
 
         } catch (error) {
           return done(error)
@@ -59,7 +68,7 @@ const initializePassport = () => {
       } // FIN CallBack
     ) //FIN localStrategy.Strategy
   )
- 
+
   // ----------------------------------------
   // Estrategia LOGIN
   passport.use("login",
@@ -72,15 +81,18 @@ const initializePassport = () => {
         try {
 
           const user = await userModel.findOne({ email });
-
-          if (!user) return done(null, false);
-
+          //Si no existe el usuario en la BD
+          if (!user) return done(null, false, { message: "Usuario no existe" });
+          // Si el usuario no tiene definida una PASSWORD en la BD
+          if(!user.password) return done(null, false, { message: "Clave no definida en el usuario" });
+          
           const isPasswordValid = await comparePassword(password, user.password);
-
-          if (!isPasswordValid) return done(null, false);
+          // Verifico Si la contraseña es incorrecta
+          if (!isPasswordValid) return done(null, false, { message: "Contraseña incorrecta" });
 
           // Borrar datos sensibles o confidenciales
           delete user.password
+
           return done(null, user);
 
         } catch (error) {
@@ -93,7 +105,6 @@ const initializePassport = () => {
 
   // ----------------------------------------
   // Estrategia GITHUB
-  // ----------------------------------------
   passport.use("github",
     new githubStrategy(
       {
@@ -106,7 +117,7 @@ const initializePassport = () => {
         try {
 
           let { email } = profile._json
-          console.log(email);
+
           const user = await userModel.findOne({ email });
 
           if (user) {
@@ -138,19 +149,16 @@ const initializePassport = () => {
 
   // ----------------------------------------
   // Estrategia CURRENT
-  // ----------------------------------------
-  passport.use(
-    "current",
+  passport.use("current",
     new passportJWT.Strategy(
       {
         secretOrKey: envs.SECRET,
-        jwtFromRequest: new passportJWT.ExtractJwt.fromExtractors([buscarToken])
+        jwtFromRequest: new passportJWT.ExtractJwt.fromExtractors([cookieExtractor])
       },
-      async (contenidoToken, done) => {
+      async (payload, done) => {
         try {
-
           // se devolvera el usuario
-          return done(null, contenidoToken)
+          return done(null, payload)
 
         } catch (error) {
           console.log(error);
@@ -164,8 +172,30 @@ const initializePassport = () => {
   )
 
   // ----------------------------------------
-  // serialize y deserialize
+  // Estrategia JWT
+  passport.use("jwt",
+    new passportJWT.Strategy(
+      {
+        secretOrKey: envs.SECRET,
+        jwtFromRequest: new passportJWT.ExtractJwt.fromExtractors([cookieExtractor])
+      },
+      async (payload, done) => {
+        try {
+          // se devolvera el token
+          return done(null, payload)
+
+        } catch (error) {
+          console.log(error);
+          return done(error)
+        }
+      }
+
+
+
+    )
+  )
   // ----------------------------------------
+  // serialize y deserialize
   // Se crea dentro dela funcion initializePassport
   // Solo cuando estemos usando SESSION
   passport.serializeUser(function (user, done) {

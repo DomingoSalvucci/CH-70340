@@ -15,7 +15,6 @@ export function generateToken(payload){
   return token
 }
 
-
 export function verifyToken(token){
   const payload = jwt.verify(token, envs.SECRET)
   return payload
@@ -27,9 +26,8 @@ export function authentication(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    return res.status(401).json({ message: "Not authorized" });
+    return res.status(401).json({ message: "Not authorized." });
   }
-
   // "Authorization: Bearer <token>"
   // Bearer --> Portador
   const token = authHeader.split(" ")[1];
@@ -41,7 +39,7 @@ export function authentication(req, res, next) {
   }
   catch(error){
     console.log(error);
-    return res.status(401).json({ message: "Not authorized" });
+    return res.status(401).json({ message: "Not authorized.." });
   } 
   
 }
